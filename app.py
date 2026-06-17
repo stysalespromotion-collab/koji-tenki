@@ -1,6 +1,6 @@
-# v2
 import streamlit as st
 import io
+import os
 from transfer import transfer_dekidaka, transfer_kanryo
 
 st.set_page_config(
@@ -26,11 +26,19 @@ st.divider()
 st.subheader("② 書式を選択")
 shoshiki = st.radio(
     "転記先の書式",
-    ["出来高（途中回）", "工事完了（最終明細）"],
+    ["出来高（途中回）", "１回完了", "工事完了（最終明細）"],
     horizontal=True
 )
 
 st.divider()
+
+def get_base_name(filename):
+    """見積決定ファイル名から〇〇〇〇部分を取得"""
+    name = os.path.splitext(filename)[0]
+    # 「見積決定」「見積決定書」などを除去
+    for kw in ['見積決定書', '見積決定']:
+        name = name.replace(kw, '')
+    return name.strip('_').strip()
 
 if shoshiki == "出来高（途中回）":
     st.subheader("③ 回数を入力")
@@ -50,11 +58,42 @@ if shoshiki == "出来高（途中回）":
                         mitsumori_file.name,
                         kaime=int(kaime)
                     )
+                    base = get_base_name(mitsumori_file.name)
+                    out_name = f"{base}_出来高{kaime}.xlsx"
                     st.success(f"✅ 転記完了！（第{kaime}回 出来高）")
                     st.download_button(
-                        label="📥 出来高.xlsx をダウンロード",
+                        label=f"📥 {out_name} をダウンロード",
                         data=result,
-                        file_name=f"出来高_{kaime}回目.xlsx",
+                        file_name=out_name,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.error(f"エラーが発生しました: {e}")
+
+elif shoshiki == "１回完了":
+    st.subheader("③ 転記実行")
+
+    if mitsumori_file is None:
+        st.warning("見積決定申請書をアップロードしてください")
+    else:
+        if st.button("転記してExcelをダウンロード", type="primary", use_container_width=True):
+            with st.spinner("転記中..."):
+                try:
+                    result = transfer_kanryo(
+                        mitsumori_file.read(),
+                        mitsumori_file.name,
+                        dekidaka_list=[],
+                        kaime=1,
+                        ikkai=True
+                    )
+                    base = get_base_name(mitsumori_file.name)
+                    out_name = f"{base}_１回完了.xlsx"
+                    st.success("✅ 転記完了！（１回完了）")
+                    st.download_button(
+                        label=f"📥 {out_name} をダウンロード",
+                        data=result,
+                        file_name=out_name,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
@@ -84,7 +123,7 @@ else:
     if mitsumori_file is None:
         st.warning("見積決定申請書をアップロードしてください")
     elif len(dekidaka_files) == 0:
-        st.warning("過去の出来高ファイルをアップロードしてください（下請支払の累計計算に必要です）")
+        st.warning("過去の出来高ファイルをアップロードしてください")
         if st.button("出来高ファイルなしで転記する", use_container_width=True):
             with st.spinner("転記中..."):
                 try:
@@ -92,13 +131,16 @@ else:
                         mitsumori_file.read(),
                         mitsumori_file.name,
                         dekidaka_list=[],
-                        kaime=int(kaime)
+                        kaime=int(kaime),
+                        ikkai=False
                     )
-                    st.success(f"✅ 転記完了！（第{kaime}回 工事完了）")
+                    base = get_base_name(mitsumori_file.name)
+                    out_name = f"{base}_工事完了収支明細.xlsx"
+                    st.success("✅ 転記完了！")
                     st.download_button(
-                        label="📥 工事完了.xlsx をダウンロード",
+                        label=f"📥 {out_name} をダウンロード",
                         data=result,
-                        file_name=f"工事完了_{kaime}回目.xlsx",
+                        file_name=out_name,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
@@ -113,13 +155,16 @@ else:
                         mitsumori_file.read(),
                         mitsumori_file.name,
                         dekidaka_list=dekidaka_list,
-                        kaime=int(kaime)
+                        kaime=int(kaime),
+                        ikkai=False
                     )
-                    st.success(f"✅ 転記完了！（第{kaime}回 工事完了・下請支払累計{len(dekidaka_files)}回分）")
+                    base = get_base_name(mitsumori_file.name)
+                    out_name = f"{base}_工事完了収支明細.xlsx"
+                    st.success(f"✅ 転記完了！（下請支払累計{len(dekidaka_files)}回分）")
                     st.download_button(
-                        label="📥 工事完了.xlsx をダウンロード",
+                        label=f"📥 {out_name} をダウンロード",
                         data=result,
-                        file_name=f"工事完了_{kaime}回目.xlsx",
+                        file_name=out_name,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
