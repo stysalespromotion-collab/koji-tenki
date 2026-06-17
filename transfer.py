@@ -1,4 +1,4 @@
-# v2
+# v3
 """
 転記ロジックモジュール
 見積決定（.xlsx / .xls）→ 出来高.xlsx / 工事完了.xlsx
@@ -165,7 +165,7 @@ def transfer_dekidaka(mitsumori_bytes, mitsumori_name, kaime):
     return out.read()
 
 
-def transfer_kanryo(mitsumori_bytes, mitsumori_name, dekidaka_list, kaime):
+def transfer_kanryo(mitsumori_bytes, mitsumori_name, dekidaka_list, kaime, ikkai=False):
     wb_src = _load_workbook_any(mitsumori_bytes, mitsumori_name)
     ws_src = wb_src['見積決定']
 
@@ -173,6 +173,12 @@ def transfer_kanryo(mitsumori_bytes, mitsumori_name, dekidaka_list, kaime):
         tmpl_bytes = f.read()
     wb_dst = load_workbook(io.BytesIO(tmpl_bytes))
     ws_dst = wb_dst['１回完了']
+
+    # １回完了 or 工事完了の表記を設定
+    if ikkai:
+        ws_dst['F2'] = '　　　　　　（１回工事完了）'
+    else:
+        ws_dst['F2'] = '　　　　　　（売上出来高計上済）'
 
     _set_val(ws_dst, 'A2', ws_src['B3'].value)
     _set_val(ws_dst, 'C3', ws_src['C4'].value)
