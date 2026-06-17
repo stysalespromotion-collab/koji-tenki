@@ -32,7 +32,6 @@ def _set_val(ws, coord, value):
 
 
 def _find_uriage_gokei(ws_src):
-    """売上合計（合計行のH列）を返す"""
     for row in range(10, 30):
         b_val = ws_src.cell(row, 2).value
         if b_val and ('合' in str(b_val) and '計' in str(b_val)):
@@ -43,60 +42,44 @@ def _find_uriage_gokei(ws_src):
 
 
 def _find_shitauke(ws_src):
-    """
-    下請工事店名と合計金額を抽出。
-    店名行（E列・G列が空）→ 合計行（「合計」を含む行のH列）
-    """
     results = []
     current_name = None
-
     for row in range(19, 55):
         b_val = ws_src.cell(row, 2).value
         h_val = ws_src.cell(row, 8).value
         e_val = ws_src.cell(row, 5).value
         g_val = ws_src.cell(row, 7).value
-
         if b_val is None:
             continue
-
         b_str = str(b_val).strip()
         if b_str == '':
             continue
-
         if any(kw in b_str for kw in ['下請工事店名', '取引条件', '出精値引き', '材料']):
             continue
-
         if '下請支払合計' in b_str:
             break
-
         if '合' in b_str and '計' in b_str:
             if current_name and h_val is not None and isinstance(h_val, (int, float)):
                 results.append((current_name, h_val))
                 current_name = None
             continue
-
         e_empty = (e_val is None or str(e_val).strip() == '')
         g_empty = (g_val is None or str(g_val).strip() == '')
         if e_empty and g_empty:
             current_name = b_str
-
     return results
 
 
 def _find_material(ws_src):
-    """材料明細を抽出する"""
     results = []
     mat_start = None
-
     for row in range(35, 65):
         b_val = ws_src.cell(row, 2).value
         if b_val and '材料' in str(b_val) and ('販売' in str(b_val) or '使用' in str(b_val)):
             mat_start = row + 1
             break
-
     if mat_start is None:
         return results
-
     for row in range(mat_start, mat_start + 20):
         b_val = ws_src.cell(row, 2).value
         if b_val is None or str(b_val).strip() == '':
@@ -106,21 +89,17 @@ def _find_material(ws_src):
             break
         if any(kw in b_str for kw in ['施工担当者', '下請業者', 'その他経費', '間接経費']):
             break
-
         row_data = {}
-        for col in [2, 4, 5, 6, 7, 8, 9, 10, 11]:
+        for col in [2, 4, 5, 6, 7, 8, 9]:
             val = ws_src.cell(row, col).value
             if val is not None and str(val).strip() not in ('', 'None'):
                 row_data[col] = val
-
         if row_data:
             results.append(row_data)
-
     return results
 
 
 def _find_toko_mgmt(ws_src):
-    """塗厚管理データを抽出"""
     result = {}
     for row in range(50, 70):
         i_val = ws_src.cell(row, 9).value
@@ -144,6 +123,17 @@ def transfer_dekidaka(mitsumori_bytes, mitsumori_name, kaime):
         tmpl_bytes = f.read()
     wb_dst = load_workbook(io.BytesIO(tmpl_bytes))
     ws_dst = wb_dst['出来高']
+
+    _set_val(ws_dst, 'B3', ws_src['B3'].value)
+    _set_val(ws_dst, 'L2', ws_src['K2'].value)
+    _set_val(ws_dst, 'L3', ws_src['K3'].value)
+    _set_val(ws_dst, 'L4', ws_src['K4'].value)
+    _set_val(ws_dst, 'C6', ws_src['C6'].value)
+    _set_val(ws_dst, 'C7', ws_src['C7'].value)
+    _set_val(ws_dst, 'C8', ws_src['C8'].value)
+    _set_val(ws_dst, 'I6', ws_src['I6'].value)
+    _set_val(ws_dst, 'I7', ws_src['I7'].value)
+    _set_val(ws_dst, 'I8', ws_src['I8'].value)
 
     ws_dst['J10'] = f'{kaime}'
     ws_dst['J11'] = f'{kaime}'
